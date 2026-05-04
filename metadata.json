@@ -1,0 +1,26 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "",
+                "Name": "Local Development"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "System tray toggle that nudges the mouse with ydotool once per second.",
+        "Icon": "input-mouse-symbolic",
+        "Id": "org.tenax.ydotoolmousemover",
+        "License": "MIT",
+        "Name": "Ydotool Mouse Mover",
+        "ServiceTypes": [
+            "Plasma/Applet"
+        ],
+        "Version": "0.1.0",
+        "Website": "https://localhost/"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-MainScript": "ui/main.qml",
+    "X-Plasma-NotificationArea": true,
+    "X-Plasma-NotificationAreaCategory": "SystemServices"
+}

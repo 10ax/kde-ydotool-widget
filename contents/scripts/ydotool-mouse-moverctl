@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+unit_name="ydotool-mouse-mover.service"
+step_px="${YDTOOL_MOUSE_MOVER_STEP:-10}"
+interval_seconds="${YDTOOL_MOUSE_MOVER_INTERVAL:-1}"
+direction="${YDTOOL_MOUSE_MOVER_DIRECTION:-cycle}"
+
+usage() {
+    cat <<'USAGE'
+Usage: ydotool-mouse-moverctl <command>
+
+Commands:
+  start      Start the user systemd unit that nudges the mouse.
+  stop       Stop the user systemd unit.
+  toggle     Start when stopped, stop when running.
+  status     Print "running" or "stopped".
+    qstatus    Like status, with exit code 0 when running and 3 when stopped.
+    qtoggle    Like toggle, with exit code 0 when started and 3 when stopped.
+  doctor     Check required commands and common ydotool daemon setup.
+  logs       Follow the unit logs.
+
+Environment:
+  YDTOOL_MOUSE_MOVER_STEP=10
+  YDTOOL_MOUSE_MOVER_INTERVAL=1
+  YDTOOL_MOUSE_MOVER_DIRECTION=right|left|up|down|cycle
+  YDOTOOL_SOCKET=/path/to/.ydotool_socket
+USAGE
+}
+
+have() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+is_running() {
+    systemctl --user --quiet is-active "$unit_name"
+}
+
+movement_for_direction() {
+    case "$1" in
+        right) printf '%s 0\n' "$step_px" ;;
+        left) printf -- '-%s 0\n' "$step_px" ;;
+        up) printf -- '0 -%s\n' "$step_px" ;;
+        down) printf '0 %s\n' "$step_px" ;;
+        *) printf '%s 0\n' "$step_px" ;;
+    esac
+}
+
+loop_script() {
+    cat <<'SCRIPT'
+set -euo pipefail
+
+step_px="${YDTOOL_MOUSE_MOVER_STEP:-10}"
+interval_seconds="${YDTOOL_MOUSE_MOVER_INTERVAL:-1}"
+direction="${YDTOOL_MOUSE_MOVER_DIRECTION:-right}"
+cycle_index=0
+
+move_once() {
+    case "$direction" in
+        right) ydotool mousemove -x "$step_px" -y 0 ;;
+        left) ydotool mousemove -x "-$step_px" -y 0 ;;
+        up) ydotool mousemove -x 0 -y "-$step_px" ;;
+        down) ydotool mousemove -x 0 -y "$step_px" ;;
+        cycle)
+            case "$cycle_index" in
+                0) ydotool mousemove -x "$step_px" -y 0 ;;
+                1) ydotool mousemove -x 0 -y "$step_px" ;;
+                2) ydotool mousemove -x "-$step_px" -y 0 ;;
+                *) ydotool mousemove -x 0 -y "-$step_px" ;;
+            esac
+            cycle_index=$(((cycle_index + 1) % 4))
+            ;;
+        *) ydotool mousemove -x "$step_px" -y 0 ;;
+    esac
+}
+
+while true; do
+    move_once
+    sleep "$interval_seconds"
+done
+SCRIPT
+}
+
+start_mover() {
+    if is_running; then
+        printf 'running\n'
+        return 0
+    fi
+
+    if ! have ydotool; then
+        printf 'ydotool command not found\n' >&2
+        return 127
+    fi
+
+    if ! have systemd-run; then
+        printf 'systemd-run command not found\n' >&2
+        return 127
+    fi
+
+    local systemd_run_command=(
+        systemd-run --user
+        --unit="$unit_name"
+        --description="Ydotool Mouse Mover"
+        --collect
+        --quiet
+        --same-dir
+        --setenv="YDTOOL_MOUSE_MOVER_STEP=$step_px"
+        --setenv="YDTOOL_MOUSE_MOVER_INTERVAL=$interval_seconds"
+        --setenv="YDTOOL_MOUSE_MOVER_DIRECTION=$direction"
+    )
+
+    if [[ -n "${YDOTOOL_SOCKET:-}" ]]; then
+        systemd_run_command+=(--setenv="YDOTOOL_SOCKET=$YDOTOOL_SOCKET")
+    fi
+
+    systemd_run_command+=(/usr/bin/env bash -c "$(loop_script)")
+    "${systemd_run_command[@]}" >/dev/null
+
+    printf 'started\n'
+}
+
+stop_mover() {
+    if is_running; then
+        systemctl --user stop "$unit_name"
+    fi
+
+    printf 'stopped\n'
+}
+
+status_mover() {
+    if is_running; then
+        printf 'running\n'
+    else
+        printf 'stopped\n'
+    fi
+}
+
+qstatus_mover() {
+    if is_running; then
+        printf 'running\n'
+        return 0
+    fi
+
+    printf 'stopped\n'
+    return 3
+}
+
+qtoggle_mover() {
+    if is_running; then
+        stop_mover >/dev/null
+        printf 'stopped\n'
+        return 3
+    fi
+
+    start_mover >/dev/null
+    printf 'running\n'
+    return 0
+}
+
+doctor() {
+    local failed=0
+
+    for command_name in ydotool systemctl systemd-run; do
+        if have "$command_name"; then
+            printf 'ok: %s -> %s\n' "$command_name" "$(command -v "$command_name")"
+        else
+            printf 'missing: %s\n' "$command_name"
+            failed=1
+        fi
+    done
+
+    if systemctl --user show-environment >/dev/null 2>&1; then
+        printf 'ok: user systemd manager is reachable\n'
+    else
+        printf 'missing: user systemd manager is not reachable\n'
+        failed=1
+    fi
+
+    if systemctl --quiet is-active ydotool.service 2>/dev/null; then
+        printf 'ok: system ydotool.service is active\n'
+    elif pgrep -x ydotoold >/dev/null 2>&1; then
+        printf 'ok: ydotoold process is running\n'
+    else
+        printf 'warn: ydotoold does not appear to be running; on Arch try: sudo systemctl enable --now ydotool.service\n'
+    fi
+
+    read -r x_delta y_delta < <(movement_for_direction "$direction")
+    printf 'ok: configured movement is x=%s y=%s every %ss\n' "$x_delta" "$y_delta" "$interval_seconds"
+
+    return "$failed"
+}
+
+case "${1:-}" in
+    start) start_mover ;;
+    stop) stop_mover ;;
+    toggle)
+        if is_running; then
+            stop_mover
+        else
+            start_mover
+        fi
+        ;;
+    status) status_mover ;;
+    qstatus) qstatus_mover ;;
+    qtoggle) qtoggle_mover ;;
+    doctor) doctor ;;
+    logs) journalctl --user-unit="$unit_name" --follow ;;
+    -h|--help|help) usage ;;
+    *) usage >&2; exit 64 ;;
+esac
