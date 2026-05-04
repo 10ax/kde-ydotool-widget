@@ -1,6 +1,6 @@
 # Ydotool Mouse Mover Plasma Widget
 
-KDE Plasma 6 system tray widget that toggles a `ydotool` mouse nudge loop. When enabled, it moves the pointer by 10 pixels once per second. The default direction is right; set `YDTOOL_MOUSE_MOVER_DIRECTION=left|up|down|cycle` before starting if you want a different direction.
+KDE Plasma 6 system tray widget that toggles a `ydotool` mouse nudge loop. When enabled, it moves the pointer by 10 pixels once per second. The default direction is cycle; set `YDTOOL_MOUSE_MOVER_DIRECTION=left|up|down|cycle` before starting if you want a different direction.
 
 The applet is intentionally self-contained under this repository root, outside the normal monorepo layout.
 
