@@ -8,19 +8,25 @@ direction="${YDTOOL_MOUSE_MOVER_DIRECTION:-cycle}"
 
 usage() {
     cat <<'USAGE'
-Usage: ydotool-mouse-moverctl <command>
+Usage: ydotool-mouse-moverctl [options] <command>
 
 Commands:
   start      Start the user systemd unit that nudges the mouse.
   stop       Stop the user systemd unit.
   toggle     Start when stopped, stop when running.
+  restart    Stop then start, so new movement options take effect.
   status     Print "running" or "stopped".
     qstatus    Like status, with exit code 0 when running and 3 when stopped.
     qtoggle    Like toggle, with exit code 0 when started and 3 when stopped.
   doctor     Check required commands and common ydotool daemon setup.
   logs       Follow the unit logs.
 
-Environment:
+Options (override the environment; the plasmoid passes these):
+  --step N             Pixels per nudge, 1-500.        (default 10)
+  --interval N         Seconds between nudges, 1-3600. (default 1)
+  --direction NAME     right|left|up|down|cycle.       (default cycle)
+
+Environment (used when the matching option is absent):
   YDTOOL_MOUSE_MOVER_STEP=10
   YDTOOL_MOUSE_MOVER_INTERVAL=1
   YDTOOL_MOUSE_MOVER_DIRECTION=right|left|up|down|cycle
@@ -30,6 +36,51 @@ USAGE
 
 have() {
     command -v "$1" >/dev/null 2>&1
+}
+
+# Pull --step/--interval/--direction out of the arguments, wherever they appear,
+# and keep the first non-option word as the command. Values come from an
+# untrusted place (a config file the user can edit), so they are clamped here as
+# well as in the plasmoid: this is the real boundary.
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --step)      step_px="${2:-$step_px}"; shift ;;
+            --step=*)    step_px="${1#*=}" ;;
+            --interval)  interval_seconds="${2:-$interval_seconds}"; shift ;;
+            --interval=*) interval_seconds="${1#*=}" ;;
+            --direction) direction="${2:-$direction}"; shift ;;
+            --direction=*) direction="${1#*=}" ;;
+            -h|--help)   usage; exit 0 ;;
+            -*)
+                printf 'Unknown option: %s\n' "$1" >&2
+                usage >&2
+                exit 64
+                ;;
+            *)
+                if [ -z "$command_name" ]; then
+                    command_name="$1"
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    case "$step_px" in
+        ''|*[!0-9]*) step_px=10 ;;
+    esac
+    if [ "$step_px" -lt 1 ]; then step_px=1; elif [ "$step_px" -gt 500 ]; then step_px=500; fi
+
+    case "$interval_seconds" in
+        ''|*[!0-9]*) interval_seconds=1 ;;
+    esac
+    if [ "$interval_seconds" -lt 1 ]; then interval_seconds=1
+    elif [ "$interval_seconds" -gt 3600 ]; then interval_seconds=3600; fi
+
+    case "$direction" in
+        right|left|up|down|cycle) ;;
+        *) direction=cycle ;;
+    esac
 }
 
 is_running() {
@@ -157,6 +208,18 @@ qtoggle_mover() {
     return 0
 }
 
+# The movement options are baked into the unit's environment at start, so a
+# running mover has to be recreated to pick up new ones.
+restart_mover() {
+    if is_running; then
+        systemctl --user stop "$unit_name"
+    fi
+
+    start_mover >/dev/null
+    printf 'running\n'
+    return 0
+}
+
 doctor() {
     local failed=0
 
@@ -190,7 +253,10 @@ doctor() {
     return "$failed"
 }
 
-case "${1:-}" in
+command_name=""
+parse_args "$@"
+
+case "$command_name" in
     start) start_mover ;;
     stop) stop_mover ;;
     toggle)
@@ -200,6 +266,7 @@ case "${1:-}" in
             start_mover
         fi
         ;;
+    restart) restart_mover ;;
     status) status_mover ;;
     qstatus) qstatus_mover ;;
     qtoggle) qtoggle_mover ;;

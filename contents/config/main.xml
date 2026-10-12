@@ -10,5 +10,17 @@
       <label>How the tray icon shows whether the mouse mover is running: "dot-when-running", "dot-always", "icon-swap" or "none".</label>
       <default>dot-when-running</default>
     </entry>
+    <entry name="direction" type="String">
+      <label>Direction of the nudge: "right", "left", "up", "down" or "cycle" (a small square back to the start).</label>
+      <default>cycle</default>
+    </entry>
+    <entry name="stepPixels" type="Int">
+      <label>How far the pointer moves per nudge, in pixels (1-500).</label>
+      <default>10</default>
+    </entry>
+    <entry name="intervalSeconds" type="Int">
+      <label>Seconds between nudges (1-3600).</label>
+      <default>1</default>
+    </entry>
   </group>
 </kcfg>

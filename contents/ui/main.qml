@@ -19,12 +19,47 @@ PlasmoidItem {
     property string lastMessage: ""
     property string lastStatus: "unknown"
 
+    // Mirrors of the movement settings. The helper clamps these as well; doing it
+    // here too keeps the command line sane and the values usable in QML.
+    readonly property string direction: {
+        const value = Plasmoid.configuration.direction;
+        return ["right", "left", "up", "down", "cycle"].indexOf(value) !== -1 ? value : "cycle";
+    }
+    readonly property int stepPixels: clampInt(Plasmoid.configuration.stepPixels, 1, 500, 10)
+    readonly property int intervalSeconds: clampInt(Plasmoid.configuration.intervalSeconds, 1, 3600, 1)
+
+    // Passed to the helper as options; the settings are the source of truth and
+    // the helper's environment variables are the fallback for CLI use.
+    readonly property string helperOptions: "--step " + root.stepPixels
+        + " --interval " + root.intervalSeconds
+        + " --direction " + root.direction
+
+    // Flipped in Component.onCompleted so the first evaluation of helperOptions
+    // cannot restart a mover that is already running fine.
+    property bool ready: false
+
+    function clampInt(value, minimum, maximum, fallback) {
+        const parsed = Number.parseInt(value, 10);
+        if (!isFinite(parsed)) {
+            return fallback;
+        }
+        return Math.max(minimum, Math.min(maximum, parsed));
+    }
+
     function shellQuote(value) {
         return "'" + String(value).replace(/'/g, "'\\''") + "'";
     }
 
     function runHelper(action) {
-        executableEngine.connectSource(shellQuote(helperPath) + " " + action + " # " + Date.now());
+        executableEngine.connectSource(shellQuote(helperPath) + " " + root.helperOptions + " " + action + " # " + Date.now());
+    }
+
+    // The options are baked into the mover's systemd unit at start, so a running
+    // mover has to be recreated to pick up a change.
+    onHelperOptionsChanged: {
+        if (root.ready && root.moverActive) {
+            root.runHelper("restart");
+        }
     }
 
     function refreshStatus() {
@@ -216,5 +251,8 @@ PlasmoidItem {
         onTriggered: root.refreshStatus()
     }
 
-    Component.onCompleted: root.refreshStatus()
+    Component.onCompleted: {
+        root.ready = true;
+        root.refreshStatus();
+    }
 }
