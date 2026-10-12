@@ -50,16 +50,34 @@ PlasmoidItem {
         anchors.fill: parent
         hoverEnabled: true
 
-        QQC2.ToolTip.visible: containsMouse
-        QQC2.ToolTip.text: root.toolTipSubText
-        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-
         onClicked: root.toggleMover()
 
         Kirigami.Icon {
+            id: baseIcon
             anchors.fill: parent
             source: Plasmoid.icon
             active: compactMouseArea.containsMouse
+        }
+
+        // Status badge: the mouse glyph is identical for both states once the
+        // tray recolours it, so carry the running/stopped state in a coloured
+        // dot instead (green = running, muted = stopped).
+        Rectangle {
+            id: statusBadge
+
+            readonly property real diameter: Math.max(6, Math.round(Math.min(parent.width, parent.height) * 0.4))
+
+            width: diameter
+            height: diameter
+            radius: diameter / 2
+            anchors.right: baseIcon.right
+            anchors.bottom: baseIcon.bottom
+
+            color: root.moverActive
+                ? Kirigami.Theme.positiveTextColor
+                : Kirigami.Theme.disabledTextColor
+            border.width: Math.max(1, Math.round(diameter * 0.15))
+            border.color: Kirigami.Theme.backgroundColor
         }
     }
 
@@ -134,7 +152,9 @@ PlasmoidItem {
             const stdout = String(data.stdout || "").trim();
             const stderr = String(data.stderr || "").trim();
             const output = stdout || stderr;
-            const exitCode = Number(data.exitCode);
+            // The Plasma executable engine exposes the process exit status under
+            // the key "exit code" (with a space), not "exitCode".
+            const exitCode = Number(data["exit code"]);
             root.lastMessage = output;
 
             if (output === "running" || output.indexOf("started") === 0 || exitCode === 0) {
