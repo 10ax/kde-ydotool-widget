@@ -90,6 +90,30 @@ validate_package() {
     require_command kpackagetool6
     bash -n "$helper"
     bash -n "$script_dir/dev.sh"
+
+    # Settings are optional, but when present check the XML parses and that every
+    # page config.qml names actually resolves: a page that does not shows up as an
+    # empty settings dialog, which is hard to diagnose from outside.
+    if [ -e "$script_dir/contents/config/main.xml" ]; then
+        if command -v xmllint >/dev/null 2>&1; then
+            xmllint --noout "$script_dir/contents/config/main.xml" \
+                && printf 'ok: config/main.xml parses\n' \
+                || { printf 'fail: config/main.xml does not parse\n' >&2; exit 1; }
+        else
+            printf 'skip: xmllint not installed, config/main.xml unchecked\n'
+        fi
+
+        local page
+        for page in $(sed -n 's/.*source:[[:space:]]*"\([^"]*\)".*/\1/p' "$script_dir/contents/config/config.qml"); do
+            if [ -e "$script_dir/contents/ui/$page" ]; then
+                printf 'ok: ui/%s\n' "$page"
+            else
+                printf 'fail: config.qml references missing ui/%s\n' "$page" >&2
+                exit 1
+            fi
+        done
+    fi
+
     kpackagetool6 --type "$package_type" --appstream-metainfo "$script_dir" >/dev/null
     printf 'Validation passed.\n'
 }

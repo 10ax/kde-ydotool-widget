@@ -50,9 +50,23 @@ For a standalone preview window:
 
 The applet calls `contents/scripts/ydotool-mouse-moverctl toggle` through Plasma's executable data engine. The helper starts a transient user systemd unit named `ydotool-mouse-mover.service`, so the movement loop is easy to inspect and stop even while Plasma is being reloaded.
 
-## Configuration
+## Settings
 
-Set these variables before toggling the helper or widget:
+Right click the tray icon → *Configure Ydotool Mouse Mover…* → **General**.
+
+| Setting | Default | Notes |
+|---|---|---|
+| Tray indicator | Dot while running | How the tray shows that the mover is running: *Dot while running*, *Dot always*, *Switch the icon with the state*, or *Nothing, tooltip only* |
+
+The mouse glyph looks the same in both states once the panel recolours it, so the
+indicator is what tells them apart; the tooltip reports the state in every mode.
+The setting lives in `~/.config/plasma-org.kde.plasma.desktop-appletsrc`, defined
+by `contents/config/main.xml`.
+
+## Helper configuration (environment)
+
+Not the same thing as the settings above — these only affect the helper process.
+Set them before toggling the helper or widget:
 
 ```sh
 export YDTOOL_MOUSE_MOVER_STEP=10

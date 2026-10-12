@@ -35,7 +35,31 @@ PlasmoidItem {
         runHelper("qtoggle");
     }
 
-    Plasmoid.icon: moverActive ? "input-mouse" : "input-mouse-symbolic"
+    // Validated on read: the config file is user-editable, so an unknown value
+    // must not leave the widget with no state indicator at all.
+    readonly property string trayIndicator: {
+        const mode = Plasmoid.configuration.trayIndicator;
+        return ["dot-when-running", "dot-always", "icon-swap", "none"].indexOf(mode) !== -1
+            ? mode
+            : "dot-when-running";
+    }
+
+    readonly property bool badgeVisible: {
+        switch (trayIndicator) {
+        case "dot-always":
+            return true;
+        case "dot-when-running":
+            return moverActive;
+        default:
+            return false;
+        }
+    }
+
+    // Only "icon-swap" changes the icon. The other modes keep one glyph so the
+    // tray stays visually stable and the panel can recolour it.
+    Plasmoid.icon: trayIndicator === "icon-swap" && moverActive
+        ? "input-mouse"
+        : "input-mouse-symbolic"
     Plasmoid.status: PlasmaCore.Types.ActiveStatus
     Plasmoid.title: i18n("Ydotool Mouse Mover")
 
@@ -60,13 +84,15 @@ PlasmoidItem {
         }
 
         // Status badge: the mouse glyph is identical for both states once the
-        // tray recolours it, so carry the running/stopped state in a coloured
-        // dot instead (green = running, muted = stopped).
+        // tray recolours it, so carry the state in a coloured dot instead
+        // (green = running, muted = stopped). Whether and when it shows is the
+        // "Tray indicator" setting.
         Rectangle {
             id: statusBadge
 
             readonly property real diameter: Math.max(6, Math.round(Math.min(parent.width, parent.height) * 0.4))
 
+            visible: root.badgeVisible
             width: diameter
             height: diameter
             radius: diameter / 2
