@@ -5,6 +5,11 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 package_id="org.tenax.ydotoolmousemover"
 package_type="Plasma/Applet"
 helper="$script_dir/contents/scripts/ydotool-mouse-moverctl"
+icon_theme_dir="$HOME/.local/share/icons/hicolor/scalable/apps"
+icon_files=(
+    ydotool-mouse-mover-symbolic.svg
+    ydotool-mouse-mover-running-symbolic.svg
+)
 
 usage() {
     cat <<'USAGE'
@@ -74,6 +79,34 @@ install_package() {
     else
         kpackagetool6 --type "$package_type" --install "$script_dir"
     fi
+
+    install_icons
+}
+
+# Plasmoid.icon is looked up by name through the icon theme, so an icon that
+# only lives in the package directory renders as a blank tray entry.
+install_icons() {
+    mkdir -p "$icon_theme_dir"
+
+    local icon
+    for icon in "${icon_files[@]}"; do
+        install -m 0644 "$script_dir/contents/icons/$icon" "$icon_theme_dir/$icon"
+    done
+
+    if have kbuildsycoca6; then
+        kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+    fi
+}
+
+remove_icons() {
+    local icon
+    for icon in "${icon_files[@]}"; do
+        rm -f "$icon_theme_dir/$icon"
+    done
+
+    if have kbuildsycoca6; then
+        kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+    fi
 }
 
 remove_package() {
@@ -84,6 +117,8 @@ remove_package() {
     else
         printf '%s is not installed.\n' "$package_id"
     fi
+
+    remove_icons
 }
 
 validate_package() {
@@ -115,6 +150,27 @@ validate_package() {
     fi
 
     kpackagetool6 --type "$package_type" --appstream-metainfo "$script_dir" >/dev/null
+
+    # Plasmoid.icon is resolved by name through the icon theme, so an icon that
+    # only lives in the package directory renders as a blank tray entry. Catch a
+    # name used in main.qml with no matching file in contents/icons/, which is
+    # the mistake that produces "nothing changed in the tray".
+    local name
+    for name in $(sed -n 's/^[[:space:]]*readonly property string icon[A-Za-z]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$script_dir/contents/ui/main.qml"); do
+        if [ -e "$script_dir/contents/icons/$name.svg" ]; then
+            printf 'ok: icons/%s.svg (used by main.qml)\n' "$name"
+        else
+            printf 'fail: main.qml uses the icon "%s" but contents/icons/%s.svg is missing\n' "$name" "$name" >&2
+            exit 1
+        fi
+
+        if [ -e "$icon_theme_dir/$name.svg" ]; then
+            printf 'ok: theme copy %s.svg\n' "$name"
+        else
+            printf 'warn: %s.svg is not installed in the icon theme yet; run ./dev.sh install\n' "$name"
+        fi
+    done
+
     printf 'Validation passed.\n'
 }
 

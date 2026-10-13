@@ -90,11 +90,22 @@ PlasmoidItem {
         }
     }
 
-    // Only "icon-swap" changes the icon. The other modes keep one glyph so the
-    // tray stays visually stable and the panel can recolour it.
+    // Tray glyphs. Both are shipped in the package and installed into the icon
+    // theme by dev.sh, because Plasmoid.icon is resolved by name through the
+    // theme, not from the package directory. They are monochrome and end in
+    // "-symbolic", so the panel recolours them to match the colour scheme.
+    //
+    // The idle glyph is the base for every mode, so switching the "Tray
+    // indicator" setting never changes the glyph by itself; only "icon-swap"
+    // (and only while running) swaps in the motion-arrow variant. The two
+    // states differ in silhouette rather than in colour or fill, which is what
+    // stays readable at the ~16-22 px the tray draws them at.
+    readonly property string iconIdle: "ydotool-mouse-mover-symbolic"
+    readonly property string iconRunning: "ydotool-mouse-mover-running-symbolic"
+
     Plasmoid.icon: trayIndicator === "icon-swap" && moverActive
-        ? "input-mouse"
-        : "input-mouse-symbolic"
+        ? root.iconRunning
+        : root.iconIdle
     Plasmoid.status: PlasmaCore.Types.ActiveStatus
     Plasmoid.title: i18n("Ydotool Mouse Mover")
 

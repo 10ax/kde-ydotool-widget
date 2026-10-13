@@ -9,7 +9,7 @@
         ],
         "Category": "Utilities",
         "Description": "System tray toggle that nudges the mouse with ydotool once per second.",
-        "Icon": "input-mouse-symbolic",
+        "Icon": "ydotool-mouse-mover-symbolic",
         "Id": "org.tenax.ydotoolmousemover",
         "License": "MIT",
         "Name": "Ydotool Mouse Mover",

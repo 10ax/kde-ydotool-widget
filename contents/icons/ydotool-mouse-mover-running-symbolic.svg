@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tray glyph for the "running" state (mouse nudge active).
+
+  Same mouse as the idle glyph, narrowed and pushed left, plus a pair of motion
+  arrows. Deliberately a different silhouette, not a recolour of the idle glyph:
+  the tray draws status icons at ~16-22 px, where a size or colour-only change is
+  not readable. See contents/icons/ydotool-mouse-mover-symbolic.svg for why the
+  name and currentColor matter.
+-->
+<svg height="22" width="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+    <style type="text/css" id="current-color-scheme">.ColorScheme-Text { color: #fcfcfc; } </style>
+    <path fill="currentColor" class="ColorScheme-Text" fill-rule="evenodd"
+          d="M2 7.5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0z M3.25 8.75a1.75 1.75 0 0 1 3.5 0v4.5a1.75 1.75 0 0 1-3.5 0z M4.35 8.25a0.65 0.65 0 0 1 1.3 0v2.2a0.65 0.65 0 0 1-1.3 0z M11.2 7.4 14.8 11 11.2 14.6z M15.6 7.4 19.2 11 15.6 14.6z"/>
+</svg>

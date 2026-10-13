@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tray glyph for the "idle" state (mouse nudge stopped).
+
+  Monochrome on purpose: the icon name ends in "-symbolic" and the paths use
+  currentColor, so the panel recolours this to the current colour scheme. Do not
+  replace it with a colourful icon, and do not drop the "-symbolic" suffix from
+  the file name, or the tray will show it in a fixed colour.
+
+  Installed into the icon theme by dev.sh (install_icons); KIconLoader resolves
+  it by name, not from the package directory.
+-->
+<svg height="22" width="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+    <style type="text/css" id="current-color-scheme">.ColorScheme-Text { color: #fcfcfc; } </style>
+    <!-- Mouse body as a ring (outer stadium + inset stadium, even-odd) with the
+         scroll wheel filled inside the ring. -->
+    <path fill="currentColor" class="ColorScheme-Text" fill-rule="evenodd"
+          d="M7 7a4 4 0 0 1 8 0v8a4 4 0 0 1-8 0z M8.5 8.5a2.5 2.5 0 0 1 5 0v5a2.5 2.5 0 0 1-5 0z M10.2 7.4a0.8 0.8 0 0 1 1.6 0v2.4a0.8 0.8 0 0 1-1.6 0z"/>
+</svg>
